@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome Home</title>
+<style>
+  :root {
+    --text: #ffffff;
+    --muted: rgba(255,255,255,.78);
+    --glass: rgba(10,14,24,.45);
+    --glass-border: rgba(255,255,255,.18);
+    --focus: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #0b1020; color: var(--text);
+    font-family: "Samsung One", "SamsungOne", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+  .bg { position: fixed; inset: 0; background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 2.5s ease; transform: scale(1.04); }
+  .bg.show { opacity: 1; animation: drift 30s linear forwards; }
+  @keyframes drift { from { transform: scale(1.04); } to { transform: scale(1.12); } }
+  .shade { position: fixed; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.1) 35%, rgba(0,0,0,.25) 60%, rgba(0,0,0,.75) 100%); }
+
+  main { position: relative; height: 100%; display: flex; flex-direction: column;
+    justify-content: space-between; padding: 5vh 5vw; }
+
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 3vw; }
+  .greeting h1 { font-size: 6.2vw; font-weight: 700; letter-spacing: -.02em; line-height: 1.05;
+    text-shadow: 0 4px 30px rgba(0,0,0,.45); }
+  .greeting p { margin-top: 1.2vh; font-size: 2vw; color: var(--muted); }
+
+  .clock { text-align: right; text-shadow: 0 4px 30px rgba(0,0,0,.45); }
+  .clock .time { font-size: 7vw; font-weight: 300; line-height: 1; font-variant-numeric: tabular-nums; }
+  .clock .ampm { font-size: 2.4vw; margin-left: .4vw; color: var(--muted); }
+
+  .weather { margin-top: 2vh; display: inline-flex; align-items: center; gap: 1.2vw;
+    padding: 1.4vh 1.6vw; border-radius: 18px; background: var(--glass);
+    border: 1px solid var(--glass-border); backdrop-filter: blur(14px); }
+  .weather .icon { font-size: 3.4vw; line-height: 1; }
+  .weather .temp { font-size: 3vw; font-weight: 600; }
+  .weather .desc { font-size: 1.3vw; color: var(--muted); text-align: left; line-height: 1.35; }
+
+  .apps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1.4vw; }
+  .app { height: 15vh; border-radius: 20px; flex-direction: column; gap: 1vh; border: 2px solid transparent; cursor: pointer;
+    font: inherit; font-size: 1.6vw; font-weight: 700; color: #fff; letter-spacing: .01em;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .app:hover, .app:focus { outline: none; transform: translateY(-8px) scale(1.06);
+    border-color: var(--focus); box-shadow: 0 18px 40px rgba(0,0,0,.55); }
+  .logo { width: 5vw; height: 5vw; background: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+  .app .label { font-size: 1.1vw; font-weight: 600; opacity: .9; }
+  .app .word { font-size: 2.4vw; font-weight: 800; letter-spacing: -.01em; }
+  .netflix { background: #000; color: #e50914; }
+  .youtube { background: #ff0000; }
+  .spotify { background: #1db954; color: #000; }
+  .disney  { background: linear-gradient(135deg, #0b1a5c, #1a73c9); }
+  .hulu    { background: #1ce783; color: #0b0c0f; }
+  .yttv    { background: #fff; color: #ff0000; }
+  .prime   { background: #00a8e1; }
+  .appletv { background: #111; border-color: #333; }
+
+  .hint { margin-top: 1.6vh; font-size: 1.1vw; color: var(--muted); text-align: center; }
+  .toast { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%);
+    background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(14px);
+    padding: 1.2vh 2vw; border-radius: 14px; font-size: 1.3vw; opacity: 0; transition: opacity .3s; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="bg" id="bgA"></div>
+<div class="bg" id="bgB"></div>
+<div class="shade"></div>
+
+<main>
+  <section class="top">
+    <div class="greeting">
+      <h1 id="greet">Good morning, Sajal</h1>
+      <p id="date"></p>
+    </div>
+    <div class="clock">
+      <div><span class="time" id="time">--:--</span><span class="ampm" id="ampm"></span></div>
+      <div class="weather" id="weather">
+        <span class="icon" id="wIcon">⛅</span>
+        <span class="temp" id="wTemp">--°</span>
+        <span class="desc" id="wDesc">Seattle<br>Loading…</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="apps" id="apps"></div>
+    <p class="hint">Pick an app · Press Home on the remote for the Samsung menu</p>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+  const NAME = "Sajal";
+  const CITY = { name: "Seattle", lat: 47.6062, lon: -122.3321 };
+
+  // Samsung TV app IDs (Tizen)
+  const APPS = [
+    { name: "Netflix",     cls: "netflix", id: "3201907018807", icon: "netflix" },
+    { name: "YouTube",     cls: "youtube", id: "111299001912",  icon: "youtube" },
+    { name: "YouTube TV",  cls: "yttv",    id: "3201707014489", icon: "youtube" },
+    { name: "Spotify",     cls: "spotify", id: "3201606009684", icon: "spotify" },
+    { name: "Disney+",     cls: "disney",  id: "3201901017640", word: "Disney+" },
+    { name: "Hulu",        cls: "hulu",    id: "3201601007625", word: "hulu" },
+    { name: "Prime Video", cls: "prime",   id: "3201910019365", icon: "primevideo" },
+    { name: "Apple TV",    cls: "appletv", id: "3201807016597", icon: "appletv" },
+  ];
+
+  // Add your own: drop files in photos/ and list them here, e.g. "photos/rainier.jpg"
+  const PHOTOS = [
+    "https://picsum.photos/id/1036/1920/1080",
+    "https://picsum.photos/id/1018/1920/1080",
+    "https://picsum.photos/id/1015/1920/1080",
+    "https://picsum.photos/id/1043/1920/1080",
+    "https://picsum.photos/id/1039/1920/1080",
+    "https://picsum.photos/id/1044/1920/1080",
+  ];
+
+  // --- Clock + greeting ---
+  function tick() {
+    const now = new Date();
+    const h = now.getHours();
+    const part = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+    document.getElementById("greet").textContent = `Good ${part}, ${NAME}`;
+    const h12 = ((h + 11) % 12) + 1;
+    document.getElementById("time").textContent = `${h12}:${String(now.getMinutes()).padStart(2, "0")}`;
+    document.getElementById("ampm").textContent = h < 12 ? "AM" : "PM";
+    document.getElementById("date").textContent =
+      now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  }
+  tick(); setInterval(tick, 10000);
+
+  // --- Weather (Open-Meteo, no key) ---
+  const WX = {
+    0: ["☀️", "Clear"], 1: ["🌤️", "Mostly clear"], 2: ["⛅", "Partly cloudy"], 3: ["☁️", "Cloudy"],
+    45: ["🌫️", "Fog"], 48: ["🌫️", "Fog"], 51: ["🌦️", "Light drizzle"], 53: ["🌦️", "Drizzle"],
+    55: ["🌧️", "Heavy drizzle"], 61: ["🌧️", "Light rain"], 63: ["🌧️", "Rain"], 65: ["🌧️", "Heavy rain"],
+    71: ["🌨️", "Light snow"], 73: ["🌨️", "Snow"], 75: ["❄️", "Heavy snow"], 80: ["🌦️", "Showers"],
+    81: ["🌧️", "Showers"], 82: ["⛈️", "Heavy showers"], 95: ["⛈️", "Thunderstorm"],
+  };
+  async function weather() {
+    try {
+      const u = `https://api.open-meteo.com/v1/forecast?latitude=${CITY.lat}&longitude=${CITY.lon}` +
+        `&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min` +
+        `&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=1`;
+      const d = await (await fetch(u)).json();
+      const [icon, text] = WX[d.current.weather_code] || ["🌡️", ""];
+      document.getElementById("wIcon").textContent = icon;
+      document.getElementById("wTemp").textContent = `${Math.round(d.current.temperature_2m)}°`;
+      document.getElementById("wDesc").innerHTML =
+        `${CITY.name} · ${text}<br>H ${Math.round(d.daily.temperature_2m_max[0])}° · L ${Math.round(d.daily.temperature_2m_min[0])}°`;
+    } catch (e) {
+      document.getElementById("wDesc").innerHTML = `${CITY.name}<br>Weather unavailable`;
+    }
+  }
+  weather(); setInterval(weather, 15 * 60 * 1000);
+
+  // --- Photo slideshow ---
+  let pi = 0, front = document.getElementById("bgA"), back = document.getElementById("bgB");
+  function nextPhoto() {
+    const url = PHOTOS[pi++ % PHOTOS.length];
+    const img = new Image();
+    img.onload = () => {
+      back.style.backgroundImage = `url("${url}")`;
+      back.classList.add("show"); front.classList.remove("show");
+      [front, back] = [back, front];
+    };
+    img.src = url;
+  }
+  nextPhoto(); setInterval(nextPhoto, 25000);
+
+  // --- App tiles: ask the TV itself to open the native app ---
+  const toast = (msg) => {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+  };
+  function launch(app) {
+    toast(`Opening ${app.name}…`);
+    for (const host of ["127.0.0.1", "localhost", "10.0.0.27"]) {
+      fetch(`http://${host}:8001/api/v2/applications/${app.id}`, { method: "POST", mode: "no-cors" }).catch(() => {});
+    }
+  }
+  const grid = document.getElementById("apps");
+  APPS.forEach((app, i) => {
+    const b = document.createElement("button");
+    b.className = `app ${app.cls}`;
+    if (app.icon) {
+      const logo = document.createElement("span");
+      logo.className = "logo";
+      logo.style.setProperty("--icon", `url("icons/${app.icon}.svg")`);
+      b.appendChild(logo);
+    } else {
+      const w = document.createElement("span");
+      w.className = "word"; w.textContent = app.word;
+      b.appendChild(w);
+    }
+    const label = document.createElement("span");
+    label.className = "label"; label.textContent = app.name;
+    b.appendChild(label);
+    b.onclick = () => launch(app);
+    grid.appendChild(b);
+    if (i === 0) setTimeout(() => b.focus(), 300);
+  });
+
+  // Remote arrow keys move between tiles
+  document.addEventListener("keydown", (e) => {
+    const tiles = [...grid.children];
+    const i = tiles.indexOf(document.activeElement);
+    if (e.key === "ArrowRight") { tiles[Math.min(i + 1, tiles.length - 1)].focus(); e.preventDefault(); }
+    if (e.key === "ArrowLeft")  { tiles[Math.max(i - 1, 0)].focus(); e.preventDefault(); }
+  });
+</script>
+</body>
+</html>
